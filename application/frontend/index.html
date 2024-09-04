@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script>
+$(document).ready(function(){
+  $("button").click(function(){
+    $.get("/data",{name: "testuser"},function(data){
+      $('#dynamic').val(data)
+    });
+  }, "json");
+});
+</script>
+</head>
+<body>
+<p>Hi there, this is dynamic data from app, hello <span id="dynamic"></span></p>
+</body>
+</html>

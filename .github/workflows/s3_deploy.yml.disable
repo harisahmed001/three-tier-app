@@ -1,0 +1,29 @@
+name: s3_deploy
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  s3_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+        aws-region: ${{secrets.AWS_REGION}}
+
+    - name: Copy code to s3
+      run: aws s3 sync application/frontend s3://${{ secrets.AWS_S3_BUCKET_NAME }}/application
+        env:
+          AWS_DEFAULT_REGION: ${{secrets.AWS_REGION}}

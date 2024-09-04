@@ -1,0 +1,47 @@
+name: build-and-deployment
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Docker build
+      run: |
+        docker build -t ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_REGION}}.amazonaws.com/three-tier-app:latest -t ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_REGION}}.amazonaws.com/three-tier-app:${{ github.sha }} ./application/flask/
+
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+        aws-region: ${{secrets.AWS_REGION}}
+
+    - name: ECR Login
+      run: aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_REGION}}.amazonaws.com
+
+    - name: ECR Push
+      run: |
+        docker push ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_REGION}}.amazonaws.com/three-tier-app:latest 
+        docker push ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_REGION}}.amazonaws.com/three-tier-app:${{ github.sha }}
+
+    - name: EKS Get Kubeconfig File
+      env:
+        AWS_EKS_NAME: ${{secrets.AWS_EKS_NAME}}
+        AWS_REGION: ${{secrets.AWS_REGION}}
+      run: aws eks --region $AWS_REGION update-kubeconfig --name $AWS_EKS_NAME
+        
+    - name: EKS Deploy
+      env:
+        EKS_DEPLOYMENT: ${{secrets.EKS_DEPLOYMENT}}
+      run: kubectl rollout restart deployment/$EKS_DEPLOYMENT
